@@ -53,7 +53,7 @@ import {
     InteractsWithResourceInformation,
 } from 'laravel-nova';
 
-import {changeActiveTab} from '@/util/tab-updater';
+import {changeActiveTab} from '../util/tab-updater';
 import TabTitle from './TabTitle';
 
 export default {
