@@ -10,6 +10,7 @@
                         class="py-5 px-8 border-b-2 focus:outline-none tab"
                         :class="getTabClass(tab)"
                         v-for="(tab, key) in tabs"
+                        v-if="tab.properties.shouldShow"
                         :key="key"
                         :dusk="tab.slug + '-tab'"
                         @click="handleTabClick(tab)"
@@ -82,6 +83,25 @@ export default {
             return tabs;
         }, {});
 
+        /* set change event */
+    
+        let keys = Object.keys(tabs);
+      if (keys.length > 0) {
+            Object.keys(tabs).forEach(key => {
+                if(tabs[key] != undefined && tabs[key].hasOwnProperty('properties') && Object.keys(tabs[key].properties).length > 0){
+                    if(tabs[key].properties.changedAttribute != undefined && tabs[key].properties.attributeValue != undefined && tabs[key].properties.changedAttribute.length > 0 && tabs[key].properties.attributeValue.length > 0){
+                        this.attributeValue = tabs[key].properties.attributeValue;
+                        this.changedAttribute = tabs[key].properties.changedAttribute;
+                      let selectedValue = this.checkTabShowOrHide(tabs, tabs[key].properties.changedAttribute);
+                      if (selectedValue != null) { 
+                        tabs[key].properties.shouldShow = (tabs[key].properties.attributeValue.includes(selectedValue.toString()) ? true : false);
+                      }
+                    }
+                }
+            });
+        }
+        /* end change event */
+
         if (this.$route.query.tab !== undefined && tabs[this.$route.query.tab] !== undefined) {
             this.handleTabClick(tabs[this.$route.query.tab]);
         } else if (this.panel.selectFirstTab) {
@@ -89,6 +109,26 @@ export default {
         }
     },
     methods: {
+        checkTabShowOrHide(tabs, changeAttribute) {
+          let selectedTabs = null;
+          let selectedValue = null;
+          Object.keys(tabs).forEach(key => {
+            if (tabs[key] != undefined && tabs[key].hasOwnProperty('properties') && Object.keys(tabs[key].properties).length > 0) {
+              selectedTabs = tabs;
+              selectedTabs[key].fields.forEach(ChildKey => {
+                if (ChildKey.attribute == changeAttribute) { 
+                  let value = ChildKey.value;
+                  ChildKey.options.forEach(option => {
+                    if (option.label == value) { 
+                      selectedValue = option.value
+                    } 
+                  })
+                }
+              });
+            }
+          });
+        return selectedValue;
+        },
         /**
          * Handle the actionExecuted event and pass it up the chain.
          */

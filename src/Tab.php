@@ -21,6 +21,12 @@ class Tab implements TabContract, \JsonSerializable, Arrayable
     /** @var string|null */
     protected $name;
 
+    /** @var string */
+    protected $changedAttribute;
+
+    /** @var string[] */
+    protected $attributeValue = [];
+
     /** @var bool|\Closure|null */
     protected $showIf;
 
@@ -214,6 +220,25 @@ class Tab implements TabContract, \JsonSerializable, Arrayable
             'afterIcon' => $this->getAfterIcon(),
             'tabClass' => $this->getTabClass(),
             'bodyClass' => $this->getBodyClass(),
+            'changedAttribute' => $this->getChangedAttribute(),
+            'attributeValue' => $this->getAttributeValue()
+        ];
+    }
+
+    protected function getFieldLayout($field, $value = null)
+    {
+        if (count( ($field = explode('.', $field)) ) === 1) {
+            // backwards compatibility, property becomes field
+            $field[1] = $field[0];
+        }
+
+        return [
+            // literal form input name
+            'field' => $field[0],
+            // property to compare
+            'property' => $field[1],
+            // value to compare
+            'value' => $value,
         ];
     }
 
@@ -229,5 +254,23 @@ class Tab implements TabContract, \JsonSerializable, Arrayable
         }
 
         return $value;
+    }
+    public function dependsOnIn(string $attribute,array $value): self
+    {
+      // dd($attribute);
+        $this->changedAttribute = $attribute;
+        $this->attributeValue = $value;
+        // dd($this);
+        return $this;
+    }
+
+    public function getChangedAttribute(): string
+    {
+        return (string) $this->resolve($this->changedAttribute);
+    }
+
+    public function getAttributeValue(): array
+    {
+        return $this->attributeValue;
     }
 }

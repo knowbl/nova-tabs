@@ -6,6 +6,7 @@
                 class="py-5 px-8 border-b-2 focus:outline-none tab cursor-pointer flex items-center"
                 :class="getTabClass(tab)"
                 :key="key"
+                v-if="tab.properties.shouldShow"
                 :dusk="tab.slug + '-tab'"
                 @click="handleTabClick(tab, $event)"
             >
@@ -16,6 +17,7 @@
         <div
             v-for="(tab, index) in tabs"
             v-show="tab.slug === activeTab"
+            v-if="tab.properties.shouldShow"
             :key="'related-tabs-fields' + index"
             :label="tab.name"
         >
@@ -77,6 +79,8 @@ export default {
         return {
             tabs: null,
             activeTab: '',
+            attributeValue:[],
+            changedAttribute:""
         };
     },
     watch: {
@@ -109,6 +113,25 @@ export default {
             return tabs;
         }, {});
 
+        /* set change event */
+        let keys = Object.keys(tabs);
+        if(keys.length > 0){
+            Object.keys(tabs).forEach(key => {
+                if(tabs[key] != undefined && tabs[key].hasOwnProperty('properties') && Object.keys(tabs[key].properties).length > 0){
+                    if(tabs[key].properties.changedAttribute != undefined && tabs[key].properties.attributeValue != undefined && tabs[key].properties.changedAttribute.length > 0 && tabs[key].properties.attributeValue.length > 0){
+                        this.attributeValue = tabs[key].properties.attributeValue;
+                        this.changedAttribute = tabs[key].properties.changedAttribute;
+                        let selectedValue = this.checkTabShowOrHide(tabs, tabs[key].properties.changedAttribute);
+                        if (selectedValue != null) { 
+                          tabs[key].properties.shouldShow = (tabs[key].properties.attributeValue.includes(selectedValue.toString()) ? true : false);
+                        }
+                        Nova.$off(tabs[key].properties.changedAttribute+'-change', this.changeAttributeValue);
+                        Nova.$on(tabs[key].properties.changedAttribute+'-change', this.changeAttributeValue);
+                    }
+                }
+            });
+        }
+        /* end change event */
         if (this.$route.query.tab !== undefined && tabs[this.$route.query.tab] !== undefined) {
             this.handleTabClick({
                 slug: this.$route.query.tab,
@@ -117,7 +140,38 @@ export default {
             this.handleTabClick(tabs[Object.keys(tabs)[0]], false);
         }
     },
-    methods: {
+  methods: {
+      checkTabShowOrHide(tabs, changeAttribute) {
+          let selectedTabs = null;
+          let selectedValue = null;
+          Object.keys(tabs).forEach(key => {
+            if (tabs[key] != undefined && tabs[key].hasOwnProperty('properties') && Object.keys(tabs[key].properties).length > 0) {
+              selectedTabs = tabs;
+              selectedTabs[key].fields.forEach(ChildKey => {
+                if (ChildKey.attribute == changeAttribute) { 
+                  let value = ChildKey.value;
+                  selectedValue = value
+                }
+              });
+            }
+          });
+        return selectedValue;
+        },
+      changeAttributeValue(value) {
+            let tabs = this.tabs;
+            let keys = Object.keys(tabs);
+            if(keys.length > 0){
+                let $this = this;
+                Object.keys(tabs).forEach(key => {
+                  if (tabs[key] != undefined && tabs[key].hasOwnProperty('properties') && Object.keys(tabs[key].properties).length > 0) {
+                      if ($this.changedAttribute == tabs[key].properties.changedAttribute) {
+                        tabs[key].properties.shouldShow = (tabs[key].properties.attributeValue.includes(value) ? true : false);
+                      }
+                    }
+                });
+            }
+            this.tabs = tabs;
+        },
         /**
          * Fill the given FormData object with the field's internal value.
          */

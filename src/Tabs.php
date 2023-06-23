@@ -211,4 +211,12 @@ class Tabs extends Panel
 
         return new Tab($key, $fields);
     }
+    
+    public function dependsOnIn(string $attribute,array $value): self
+    {
+        $this->changedAttribute = $attribute;
+        $this->attributeValue = $value;
+
+        return $this;
+    }
 }
