@@ -1,118 +1,287 @@
 <template>
-  <div :class="darkModeClass">
-    <div class="tab-group">
-      <slot>
-        <Heading v-if="panel.showTitle" :level="1" v-text="panel.name"/>
-
-        <p
-          v-if="panel.helpText"
-          :class="panel.helpText ? 'tabs-mt-2' : 'tabs-mt-3'"
-          class="tabs-text-gray-500 tabs-text-sm tabs-font-semibold tabs-italic"
-          v-html="panel.helpText"
-        ></p>
-      </slot>
-
-      <div class="tab-card"
-           :class="[
-          panel.showTitle && !panel.showToolbar ? 'tabs-mt-3' : ''
-        ]"
-      >
-        <div id="tabs">
-          <div class="block">
-            <nav
-              aria-label="Tabs"
-              class="tab-menu"
-            >
-              <a
-                v-for="(tab, key) in getSortedTabs(tabs)"
+    <div class="relationship-tabs-panel card w-full">
+        <div class="flex flex-row overflow-x-auto">
+            <div
+                v-for="(tab, key) in tabs"
+                class="py-5 px-8 border-b-2 focus:outline-none tab cursor-pointer flex items-center"
+                :class="getTabClass(tab)"
                 :key="key"
-                :class="getIsTabCurrent(tab) ? 'active tabs-text-' + getCurrentColor() + '-500 tabs-font-bold tabs-border-b-2 tabs-border-b-' + getCurrentColor() + '-500' : 'tabs-text-gray-600 hover:tabs-text-gray-800 dark:tabs-text-gray-400 hover:dark:tabs-text-gray-200'"
+                v-if="tab.properties.shouldShow"
                 :dusk="tab.slug + '-tab'"
-                :ref="tab.slug + '-tab'"
-                class="tab-item border-gray-200"
-                @click.prevent="handleTabClick(tab)"
-              >
-                <span class="capitalize">{{ tab.properties.title }}</span>
-              </a>
-            </nav>
-          </div>
+                @click="handleTabClick(tab, $event)"
+            >
+                <tab-title :tab="tab" />
+            </div>
+            <div class="flex-1 border-b-2 border-40"></div>
         </div>
-
         <div
-          v-for="(tab, index) in getSortedTabs(tabs)"
-          v-show="getIsTabCurrent(tab)"
-          :key="'related-tabs-fields' + index"
-          :ref="getTabRefName(tab)"
-          :class="[
-                        'tab fields-tab',
-                        getIsTabCurrent(tab) ? 'block' : 'hidden',
-                        tab.slug,
-                    ]"
-          :label="tab.name"
+            v-for="(tab, index) in tabs"
+            v-show="tab.slug === activeTab"
+            v-if="tab.properties.shouldShow"
+            :key="'related-tabs-fields' + index"
+            :label="tab.name"
         >
-          <div class="divide-y divide-gray-100 dark:divide-gray-700" :class="getBodyClass(tab)">
-            <KeepAlive>
-              <template
-                v-for="(field, index) in tab.fields"
-                :key="'tab-' + index"
-              >
+            <div
+                :class="getBodyClass(tab)"
+            >
                 <component
-                  v-if="!field.from"
-                  :is="getComponentName(field)"
-                  ref="fields"
-                  :class="{'remove-bottom-border': index === tab.fields.length - 1}"
-                  :errors="validationErrors"
-                  :field="field"
-                  :form-unique-id="formUniqueId"
-                  :related-resource-id="relatedResourceId"
-                  :related-resource-name="relatedResourceName"
-                  :resource-id="resourceId"
-                  :resource-name="resourceName"
-                  :show-help-text="field.helpText != null"
-                  :shown-via-new-relation-modal="shownViaNewRelationModal"
-                  :via-relationship="viaRelationship"
-                  :via-resource="viaResource"
-                  :via-resource-id="viaResourceId"
-                  @field-changed="$emit('field-changed')"
-                  @file-deleted="$emit('update-last-retrieved-at-timestamp')"
-                  @file-upload-started="$emit('file-upload-started')"
-                  @file-upload-finished="$emit('file-upload-finished')"
-                />
-
-                <component
-                    v-if="field.from"
-                    :is="getComponentName(field)"
-                    :errors="validationErrors"
-                    :resource-id="getResourceId(field)"
-                    :resource-name="field.resourceName"
+                    ref="fields"
+                    v-for="(field, index) in tab.fields"
+                    :class="{'remove-bottom-border': index === tab.fields.length - 1}"
+                    :key="'tab-' + index"
+                    :is="'form-' + field.component"
+                    :resource-name="resourceName"
+                    :resource-id="resourceId"
+                    :resource="resource"
+                    :errors="errors"
                     :field="field"
-                    :via-resource="field.from.viaResource"
-                    :via-resource-id="field.from.viaResourceId"
-                    :via-relationship="field.from.viaRelationship"
-                    :form-unique-id="relationFormUniqueId"
-                    @field-changed="$emit('field-changed')"
-                    @file-deleted="$emit('update-last-retrieved-at-timestamp')"
-                    @file-upload-started="$emit('file-upload-started')"
-                    @file-upload-finished="$emit('file-upload-finished')"
-                    :show-help-text="field.helpText != null"
+                    :via-resource="viaResource"
+                    :via-resource-id="viaResourceId"
+                    :via-relationship="viaRelationship"
+                    @actionExecuted="actionExecuted"
+                    :show-help-text="field.helpText !== null"
                 />
-              </template>
-            </KeepAlive>
-          </div>
+            </div>
         </div>
-      </div>
     </div>
-  </div>
 </template>
 
 <script>
-import BehavesAsPanel from '../mixins/BehavesAsPanel';
-import HasTabs from "../mixins/HasTabs";
+import {
+    FormField,
+    HandlesValidationErrors,
+    InteractsWithResourceInformation,
+} from 'laravel-nova';
+
+import {changeActiveTab} from '@/util/tab-updater';
+import TabTitle from './TabTitle';
 
 export default {
-  mixins: [BehavesAsPanel, HasTabs],
-  data: () => ({
-    tabMode: 'form',
-  }),
+    components: {
+        TabTitle,
+    },
+    mixins: [
+        HandlesValidationErrors,
+        FormField,
+        InteractsWithResourceInformation,
+    ],
+    props: [
+        'resource',
+        'resourceName',
+        'resourceId',
+        'field',
+        'errors',
+        'viaResource',
+        'viaRelationship',
+        'viaResourceId',
+    ],
+    data() {
+        return {
+            tabs: null,
+            activeTab: '',
+            attributeValue:[],
+            changedAttribute:""
+        };
+    },
+    watch: {
+        errors: {
+            handler: function() {
+                for (const key of Object.keys(this.tabs)) {
+                    if (this.tabHasErrors(this.tabs[key])) {
+                        this.handleTabClick(this.tabs[key]);
+                        break;
+                    }
+                }
+            },
+            deep: true,
+        },
+    },
+    mounted() {
+        const tabs = this.tabs = _.toArray(this.field.fields).reduce((tabs, field) => {
+            if (!Object.hasOwnProperty.call(tabs, field.tabSlug)) {
+                tabs[field.tabSlug] = {
+                    name: field.tab,
+                    slug: field.tabSlug,
+                    listable: field.listableTab,
+                    fields: [],
+                    properties: field.tabInfo,
+                };
+            }
+
+            tabs[field.tabSlug].fields.push(field);
+
+            return tabs;
+        }, {});
+
+        /* set change event */
+        let keys = Object.keys(tabs);
+        if(keys.length > 0){
+            Object.keys(tabs).forEach(key => {
+                if(tabs[key] != undefined && tabs[key].hasOwnProperty('properties') && Object.keys(tabs[key].properties).length > 0){
+                    if(tabs[key].properties.changedAttribute != undefined && tabs[key].properties.attributeValue != undefined && tabs[key].properties.changedAttribute.length > 0 && tabs[key].properties.attributeValue.length > 0){
+                        this.attributeValue = tabs[key].properties.attributeValue;
+                        this.changedAttribute = tabs[key].properties.changedAttribute;
+                        let selectedValue = this.checkTabShowOrHide(tabs, tabs[key].properties.changedAttribute);
+                        if (selectedValue != null) { 
+                          tabs[key].properties.shouldShow = (tabs[key].properties.attributeValue.includes(selectedValue.toString()) ? true : false);
+                        }
+                        Nova.$off(tabs[key].properties.changedAttribute+'-change', this.changeAttributeValue);
+                        Nova.$on(tabs[key].properties.changedAttribute+'-change', this.changeAttributeValue);
+                    }
+                }
+            });
+        }
+        /* end change event */
+        if (this.$route.query.tab !== undefined && tabs[this.$route.query.tab] !== undefined) {
+            this.handleTabClick({
+                slug: this.$route.query.tab,
+            });
+        } else {
+            this.handleTabClick(tabs[Object.keys(tabs)[0]], false);
+        }
+    },
+  methods: {
+      checkTabShowOrHide(tabs, changeAttribute) {
+          let selectedTabs = null;
+          let selectedValue = null;
+          Object.keys(tabs).forEach(key => {
+            if (tabs[key] != undefined && tabs[key].hasOwnProperty('properties') && Object.keys(tabs[key].properties).length > 0) {
+              selectedTabs = tabs;
+              selectedTabs[key].fields.forEach(ChildKey => {
+                if (ChildKey.attribute == changeAttribute) { 
+                  let value = ChildKey.value;
+                  selectedValue = value
+                }
+              });
+            }
+          });
+        return selectedValue;
+        },
+      changeAttributeValue(value) {
+            let tabs = this.tabs;
+            let keys = Object.keys(tabs);
+            if(keys.length > 0){
+                let $this = this;
+                Object.keys(tabs).forEach(key => {
+                  if (tabs[key] != undefined && tabs[key].hasOwnProperty('properties') && Object.keys(tabs[key].properties).length > 0) {
+                      if ($this.changedAttribute == tabs[key].properties.changedAttribute) {
+                        tabs[key].properties.shouldShow = (tabs[key].properties.attributeValue.includes(value) ? true : false);
+                      }
+                    }
+                });
+            }
+            this.tabs = tabs;
+        },
+        /**
+         * Fill the given FormData object with the field's internal value.
+         */
+        fill(formData) {
+            _.each(this.field.fields, field => {
+                field.fill(formData);
+            });
+        },
+        /**
+         * Handle the actionExecuted event and pass it up the chain.
+         */
+        actionExecuted() {
+            this.$emit('actionExecuted');
+        },
+        handleTabClick(tab, updateUri = true) {
+            const currentTab = this.$router.currentRoute.query;
+
+            tab.init = true;
+            this.activeTab = tab.slug;
+
+            if (updateUri && (!currentTab || currentTab.tab !== tab.slug)) {
+                changeActiveTab(this.$router, tab.slug);
+            }
+
+            // When code fields are not visible initially they are not loaded
+            // See https://stackoverflow.com/questions/8349571/codemirror-editor-is-not-loading-content-until-clicked
+            setTimeout(this.refreshCodeFields, 1);
+        },
+        tabHasErrors(tab) {
+            const hasErrors = Object.keys(this.errors.errors).some(key => {
+                return _.includes(tab.fields.map(o => o.attribute), key);
+            });
+
+            tab.hasErrors = hasErrors;
+
+            return hasErrors;
+        },
+        getTabClass(tab) {
+            const classes = [];
+
+            if (this.activeTab === tab.slug) {
+                classes.push('text-grey-black font-bold border-primary');
+            } else {
+                classes.push('text-grey font-semibold border-40');
+            }
+
+            if (this.tabHasErrors(tab)) {
+                classes.push('text-error');
+            }
+
+            return classes.concat(tab.properties.tabClass);
+        },
+        getBodyClass(tab) {
+            const classes = [];
+
+            if (!tab.listable) {
+                classes.push('px-6 py-3');
+            }
+
+            return classes.concat(tab.properties.bodyClass);
+        },
+        refreshCodeFields() {
+            this.$refs.fields
+                .filter(field => 'codemirror' in field)
+                .forEach(field => field.codemirror.refresh());
+        },
+    },
 };
 </script>
+
+<style lang="scss">
+.relationship-tabs-panel {
+    .text-error {
+        color: var(--danger);
+
+        &.border-primary {
+            border-color: var(--danger);
+        }
+    }
+
+    .card {
+        box-shadow: none;
+    }
+
+    .tab {
+        padding-top: 1.25rem;
+        padding-bottom: 1.25rem;
+    }
+
+    .tab-content > div > .relative > .flex {
+        justify-content: flex-end;
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+
+        position: absolute;
+        top: 0;
+        right: 0;
+        transform: translateY(-100%);
+
+        align-items: center;
+        height: 62px;
+
+        > .mb-6 {
+            margin-bottom: 0;
+        }
+
+        > .w-full {
+            width: auto;
+            margin-left: 1.5rem;
+        }
+    }
+}
+</style>
