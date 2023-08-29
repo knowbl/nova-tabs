@@ -26,7 +26,7 @@ export default {
       type: Object,
       required: false,
     },
-    
+
     ...mapProps([
       'shownViaNewRelationModal',
       'mode',
@@ -47,7 +47,9 @@ export default {
       selectedTab: {},
       darkModeClass: '',
       relationFormUniqueId: '',
-      errors: this.validationErrors
+      errors: this.validationErrors,
+      visibleTabsName: [],
+      visibleTabsKeys: []
     };
   },
 
@@ -71,6 +73,42 @@ export default {
     });
 
     const tabs = this.tabs = this.setTabs();
+    this.visibleTabsName = [];
+    this.visibleTabsKeys = [];
+    /* set change event */
+    let keys = Object.keys(tabs);
+    if(keys.length > 0){
+      Object.keys(tabs).forEach(key => {
+        if(tabs[key] != undefined && tabs[key].hasOwnProperty('properties') && Object.keys(tabs[key].properties).length > 0){
+          if(tabs[key].properties.changedAttribute != undefined && tabs[key].properties.attributeValue != undefined && tabs[key].properties.changedAttribute.length > 0 && tabs[key].properties.attributeValue.length > 0){
+            this.attributeValue = tabs[key].properties.attributeValue;
+            this.changedAttribute = tabs[key].properties.changedAttribute;
+            let selectedValue = this.checkTabShowOrHide(tabs, tabs[key].properties.changedAttribute);
+            if (this.resourceId != undefined && selectedValue != null) {
+              if(tabs[key].properties.attributeValue.includes(selectedValue.toString())){
+                this.visibleTabsName.push(tabs[key].name);
+                this.visibleTabsKeys.push(key);
+                tabs[key].properties.shouldShow = true;
+              }else{
+                if(this.visibleTabsName.includes(tabs[key].name) && this.visibleTabsKeys.includes(key)){
+                  delete this.visibleTabsName[tabs[key].name];
+                  delete this.visibleTabsKeys[key];
+                }
+                tabs[key].properties.shouldShow = false;
+              }
+            }else{
+              tabs[key].properties.shouldShow = false;
+            }
+            Nova.$off(tabs[key].properties.changedAttribute+'-change', this.changeAttributeValue);
+            Nova.$on(tabs[key].properties.changedAttribute+'-change', this.changeAttributeValue);
+          }else{
+            this.visibleTabsName.push(tabs[key].name);
+            this.visibleTabsKeys.push(key);
+          }
+        }
+      });
+    }
+    /* end change event */
     const routeTabs = parseLocationHash();
     const currentTabSlug = routeTabs[this.getTabsReference()];
 
@@ -81,31 +119,31 @@ export default {
     }
 
     if (this.panel.retainTabPosition === true && Nova?.store?.tabsListenerRegistered !== true) {
-        document.addEventListener('inertia:before', (event) => {
-          if (event?.detail?.visit?.url) {
-            let currPath = window.location.pathname;
-            let newPath = event?.detail?.visit?.url?.pathname;
+      document.addEventListener('inertia:before', (event) => {
+        if (event?.detail?.visit?.url) {
+          let currPath = window.location.pathname;
+          let newPath = event?.detail?.visit?.url?.pathname;
 
-            currPath = currPath.substring(currPath.length - 5) === "/edit" ? currPath.substring(0, currPath.length - 5) : currPath;
-            newPath = newPath.substring(newPath.length - 5) === "/edit" ? newPath.substring(0, newPath.length - 5) : newPath;
+          currPath = currPath.substring(currPath.length - 5) === "/edit" ? currPath.substring(0, currPath.length - 5) : currPath;
+          newPath = newPath.substring(newPath.length - 5) === "/edit" ? newPath.substring(0, newPath.length - 5) : newPath;
 
-            if (currPath === newPath) {
-              this.locationHash = parseLocationHash();
-              event.detail.visit.url.hash = window.location.hash ?? "";
-            }
+          if (currPath === newPath) {
+            this.locationHash = parseLocationHash();
+            event.detail.visit.url.hash = window.location.hash ?? "";
           }
-          delete (Nova.store.tabsListenerRegistered);
-          return event;
-        }, { once: true });
+        }
+        delete (Nova.store.tabsListenerRegistered);
+        return event;
+      }, { once: true });
 
-        // Fix issues with tab being cleared before navigation, and history.back() not working correctly
-        document.addEventListener('inertia:start', (event) => {
-          if (this.locationHash) {
-            updateLocationHash(this.locationHash);
-            this.locationHash = null;
-          }
-        }, { once: true });
-      
+      // Fix issues with tab being cleared before navigation, and history.back() not working correctly
+      document.addEventListener('inertia:start', (event) => {
+        if (this.locationHash) {
+          updateLocationHash(this.locationHash);
+          this.locationHash = null;
+        }
+      }, { once: true });
+
       Nova.store.tabsListenerRegistered = true;
     }
 
@@ -128,6 +166,53 @@ export default {
   },
 
   methods: {
+
+    checkTabShowOrHide(tabs, changeAttribute) {
+      let selectedTabs = null;
+      let selectedValue = null;
+      Object.keys(tabs).forEach(key => {
+        if (tabs[key] != undefined && tabs[key].hasOwnProperty('properties') && Object.keys(tabs[key].properties).length > 0) {
+          selectedTabs = tabs;
+          selectedTabs[key].fields.forEach(ChildKey => {
+            if (ChildKey.attribute == changeAttribute) {
+              let value = ChildKey.value;
+              selectedValue = value
+            }
+          });
+        }
+      });
+      return selectedValue;
+    },
+    changeAttributeValue(value) {
+      let tabs = this.tabs;
+      let keys = Object.keys(tabs);
+      if(keys.length > 0){
+        let $this = this;
+        this.visibleTabsName =  [];
+        this.visibleTabsKeys =  [];
+        Object.keys(tabs).forEach(key => {
+          if (tabs[key] != undefined && tabs[key].hasOwnProperty('properties') && Object.keys(tabs[key].properties).length > 0) {
+            if ($this.changedAttribute == tabs[key].properties.changedAttribute) {
+              if(tabs[key].properties.attributeValue.includes(value)){
+                this.visibleTabsName.push(tabs[key].name);
+                this.visibleTabsKeys.push(key);
+                tabs[key].properties.shouldShow = true;
+              }else{
+                if(this.visibleTabsName.includes(tabs[key].name) && this.visibleTabsKeys.includes(key)){
+                  delete this.visibleTabsName[tabs[key].name];
+                  delete this.visibleTabsKeys[key];
+                }
+                tabs[key].properties.shouldShow = false;
+              }
+            }else{
+              this.visibleTabsName.push(tabs[key].name);
+              this.visibleTabsKeys.push(key);
+            }
+          }
+        });
+      }
+      this.tabs = tabs;
+    },
 
     /**
      * Set Tabs
@@ -267,6 +352,10 @@ export default {
      * @returns {boolean}
      */
     getIsTabCurrent(tab) {
+      if(this.selectedTab === tab && !this.visibleTabsName.includes(tab.name)){
+        let updateTab = this.tabs[this.visibleTabsKeys[0]]
+        this.handleTabClick(updateTab);
+      }
       return this.selectedTab === tab || (!this.selectedTab && this.tabs[Object.keys(this.tabs)[0]] === tab)
     },
 

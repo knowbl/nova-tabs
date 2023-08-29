@@ -37,6 +37,12 @@ class Tab implements TabContract, JsonSerializable, Arrayable
 
     protected $position;
 
+    /** @var string */
+    protected $changedAttribute;
+
+    /** @var string[] */
+    protected $attributeValue = [];
+
     public function __construct($title, array $fields, $position = 0)
     {
         $this->title = $title;
@@ -114,6 +120,8 @@ class Tab implements TabContract, JsonSerializable, Arrayable
             'slug' => $this->getSlug(),
             'shouldShow' => $this->shouldShow(),
             'bodyClass' => $this->getBodyClass(),
+            'changedAttribute' => $this->getChangedAttribute(),
+            'attributeValue' => $this->getAttributeValue()
         ];
     }
 
@@ -142,6 +150,22 @@ class Tab implements TabContract, JsonSerializable, Arrayable
         return $value;
     }
 
+    public function dependsOnIn(string $attribute,array $value): self
+    {
+        $this->changedAttribute = $attribute;
+        $this->attributeValue = $value;
+        return $this;
+    }
+
+    public function getChangedAttribute(): string
+    {
+        return (string) $this->resolve($this->changedAttribute);
+    }
+
+    public function getAttributeValue(): array
+    {
+        return $this->attributeValue;
+    }
     /**
      * @return Field[]
      */

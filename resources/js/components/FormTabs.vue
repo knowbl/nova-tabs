@@ -25,6 +25,7 @@
             >
               <a
                 v-for="(tab, key) in getSortedTabs(tabs)"
+                v-show="tab.properties.shouldShow"
                 :key="key"
                 :class="getIsTabCurrent(tab) ? 'active tabs-text-' + getCurrentColor() + '-500 tabs-font-bold tabs-border-b-2 tabs-border-b-' + getCurrentColor() + '-500' : 'tabs-text-gray-600 hover:tabs-text-gray-800 dark:tabs-text-gray-400 hover:dark:tabs-text-gray-200'"
                 :dusk="tab.slug + '-tab'"
@@ -80,21 +81,21 @@
                 />
 
                 <component
-                    v-if="field.from"
-                    :is="getComponentName(field)"
-                    :errors="validationErrors"
-                    :resource-id="getResourceId(field)"
-                    :resource-name="field.resourceName"
-                    :field="field"
-                    :via-resource="field.from.viaResource"
-                    :via-resource-id="field.from.viaResourceId"
-                    :via-relationship="field.from.viaRelationship"
-                    :form-unique-id="relationFormUniqueId"
-                    @field-changed="$emit('field-changed')"
-                    @file-deleted="$emit('update-last-retrieved-at-timestamp')"
-                    @file-upload-started="$emit('file-upload-started')"
-                    @file-upload-finished="$emit('file-upload-finished')"
-                    :show-help-text="field.helpText != null"
+                  v-if="field.from"
+                  :is="getComponentName(field)"
+                  :errors="validationErrors"
+                  :resource-id="getResourceId(field)"
+                  :resource-name="field.resourceName"
+                  :field="field"
+                  :via-resource="field.from.viaResource"
+                  :via-resource-id="field.from.viaResourceId"
+                  :via-relationship="field.from.viaRelationship"
+                  :form-unique-id="relationFormUniqueId"
+                  @field-changed="$emit('field-changed')"
+                  @file-deleted="$emit('update-last-retrieved-at-timestamp')"
+                  @file-upload-started="$emit('file-upload-started')"
+                  @file-upload-finished="$emit('file-upload-finished')"
+                  :show-help-text="field.helpText != null"
                 />
               </template>
             </KeepAlive>
