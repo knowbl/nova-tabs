@@ -43,6 +43,13 @@ class Tab implements TabContract, JsonSerializable, Arrayable
     /** @var string[] */
     protected $attributeValue = [];
 
+    /**
+     * Whether to preload the contents of the tab on the initial page load
+     * 
+     * @var bool|Closure|null 
+     * */
+    protected $preload;
+
     public function __construct($title, array $fields, $position = 0)
     {
         $this->title = $title;
@@ -65,6 +72,13 @@ class Tab implements TabContract, JsonSerializable, Arrayable
     public function name(string $name): self
     {
         $this->name = $name;
+
+        return $this;
+    }
+
+    public function preload(bool $preload = true): self
+    {
+        $this->preload = $preload;
 
         return $this;
     }
@@ -121,7 +135,8 @@ class Tab implements TabContract, JsonSerializable, Arrayable
             'shouldShow' => $this->shouldShow(),
             'bodyClass' => $this->getBodyClass(),
             'changedAttribute' => $this->getChangedAttribute(),
-            'attributeValue' => $this->getAttributeValue()
+            'attributeValue' => $this->getAttributeValue(),
+            'preload' => $this->getPreload(),
         ];
     }
 
@@ -140,7 +155,15 @@ class Tab implements TabContract, JsonSerializable, Arrayable
     {
         return (string) $this->resolve($this->title);
     }
-
+    
+    /**
+     * @return Closure|bool
+     */
+    public function getPreload(): bool
+    {
+        return (bool) $this->resolve($this->preload);
+    }
+    
     private function resolve($value)
     {
         if ($value instanceof Closure) {

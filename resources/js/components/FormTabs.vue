@@ -51,7 +51,7 @@
                     ]"
           :label="tab.name"
         >
-          <div class="divide-y divide-gray-100 dark:divide-gray-700" :class="getBodyClass(tab)">
+          <div class="divide-y divide-gray-100 dark:divide-gray-700" :class="getBodyClass(tab)" v-if="tab.properties.preload || getIsTabCurrent(tab)">
             <KeepAlive>
               <template
                 v-for="(field, index) in tab.fields"
