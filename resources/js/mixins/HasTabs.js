@@ -148,16 +148,36 @@ export default {
     }
 
     if (this.tabMode === 'form') {
-      this.$watch('validationErrors', (newErrors) => {
+      this.$watch('validationErrors', (newErrors, oldErrors) => {
+        const errorClasses = [
+          'tabs-text-' + this.getErrorColor() + '-500',
+          'tabs-border-b-2',
+          'tabs-border-b-' + this.getErrorColor() + '-500',
+          'tab-has-error'
+        ];
+        const defaultClasses = [
+          'tabs-text-gray-600',
+          'hover:tabs-text-gray-800',
+          'dark:tabs-text-gray-400',
+          'hover:dark:tabs-text-gray-200'
+        ];
+  
+        if (oldErrors.errors) {
+          Object.entries(oldErrors.errors).forEach(error => {
+            if (error[0] && this.fields.find(x => x.attribute === error[0]) && !newErrors.errors[error[0]]) {
+              let slug = this.getNestedObject(this.fields, 'attribute', error[0]).tabSlug + '-tab';
+              this.$refs[slug][0].classList.remove(...errorClasses);
+              this.$refs[slug][0].classList.add(...defaultClasses);
+            }
+          });
+        }
+  
         if (newErrors.errors) {
           Object.entries(newErrors.errors).forEach(error => {
             if (error[0] && this.fields.find(x => x.attribute === error[0])) {
-              let field = this.getNestedObject(this.fields, 'attribute', error[0]);
               let slug = this.getNestedObject(this.fields, 'attribute', error[0]).tabSlug + '-tab';
-              let addClasses = ['tabs-text-' + this.getErrorColor() + '-500', 'tabs-border-b-2', 'tabs-border-b-' + this.getErrorColor() + '-500', 'tab-has-error']
-              let removeClasses = ['tabs-text-gray-600', 'hover:tabs-text-gray-800', 'dark:tabs-text-gray-400', 'hover:dark:tabs-text-gray-200']
-              this.$refs[slug][0].classList.add(...addClasses)
-              this.$refs[slug][0].classList.remove(...removeClasses)
+              this.$refs[slug][0].classList.add(...errorClasses);
+              this.$refs[slug][0].classList.remove(...defaultClasses);
             }
           });
         }
@@ -176,7 +196,7 @@ export default {
           selectedTabs[key].fields.forEach(ChildKey => {
             if (ChildKey.attribute == changeAttribute) {
               let value = ChildKey.value;
-              selectedValue = value
+              selectedValue = value;
             }
           });
         }
@@ -186,25 +206,25 @@ export default {
     changeAttributeValue(value) {
       let tabs = this.tabs;
       let keys = Object.keys(tabs);
-      if(keys.length > 0){
+      if (keys.length > 0) {
         let $this = this;
-        this.visibleTabsName =  [];
-        this.visibleTabsKeys =  [];
+        this.visibleTabsName = [];
+        this.visibleTabsKeys = [];
         Object.keys(tabs).forEach(key => {
           if (tabs[key] != undefined && tabs[key].hasOwnProperty('properties') && Object.keys(tabs[key].properties).length > 0) {
             if ($this.changedAttribute == tabs[key].properties.changedAttribute) {
-              if(tabs[key].properties.attributeValue.includes(value)){
+              if (tabs[key].properties.attributeValue.includes(value)) {
                 this.visibleTabsName.push(tabs[key].name);
                 this.visibleTabsKeys.push(key);
                 tabs[key].properties.shouldShow = true;
-              }else{
-                if(this.visibleTabsName.includes(tabs[key].name) && this.visibleTabsKeys.includes(key)){
+              } else {
+                if (this.visibleTabsName.includes(tabs[key].name) && this.visibleTabsKeys.includes(key)) {
                   delete this.visibleTabsName[tabs[key].name];
                   delete this.visibleTabsKeys[key];
                 }
                 tabs[key].properties.shouldShow = false;
               }
-            }else{
+            } else {
               this.visibleTabsName.push(tabs[key].name);
               this.visibleTabsKeys.push(key);
             }
